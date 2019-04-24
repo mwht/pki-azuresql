@@ -1,0 +1,6 @@
+# IntellJ IDEA-related stuff
+.idea/
+*.iml
+
+# Maven output directory
+target/
