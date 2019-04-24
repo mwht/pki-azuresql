@@ -14,7 +14,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-
+        String messagePayload = message.getPayload();
+        Logger.getAnonymousLogger().log(Level.INFO, "Received payload: " + messagePayload);
     }
 
     @Override
