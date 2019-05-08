@@ -20,7 +20,7 @@ public class ChatRecord {
     @Column(name = "mesg", length = 100)
     private String mesg;
 
-    protected enum MessageType {
+    public enum MessageType {
         CHAT,
         JOIN,
         LEAVE
