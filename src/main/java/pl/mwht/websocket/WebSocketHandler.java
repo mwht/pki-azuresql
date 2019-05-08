@@ -11,6 +11,7 @@ import pl.mwht.entity.ChatRecord;
 import pl.mwht.repository.ChatRecordRepository;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,7 +36,20 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
         try {
             ChatRecord chatRecord = objectMapper.readValue(messagePayload, ChatRecord.class);
-            chatRecordRepository.save(chatRecord);
+            chatRecord.setId(null);
+            switch (chatRecord.getMessageType()) {
+                case CHAT:
+                    chatRecordRepository.save(chatRecord);
+                    break;
+                case JOIN:
+                    List<ChatRecord> messagesInRoom;
+                    usersInRoomsBinding.put(session, chatRecord.getRoomId());
+                    messagesInRoom = chatRecordRepository.findChatRecordsByRoomId(chatRecord.getRoomId());
+                    session.sendMessage(new TextMessage(objectMapper.writeValueAsString(messagesInRoom)));
+                    break;
+                case LEAVE:
+                    break;
+            }
         } catch (Exception e) {
             Logger.getAnonymousLogger().log(Level.SEVERE, e.toString());
             e.printStackTrace();
@@ -51,6 +65,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         Logger.getAnonymousLogger().log(Level.INFO, "WebSocket connection closed (" + session.getRemoteAddress().toString() + ")");
+        if(usersInRoomsBinding.containsKey(session)) {
+            String roomName = usersInRoomsBinding.get(session);
+            usersInRoomsBinding.remove(session);
+            if(!usersInRoomsBinding.containsValue(roomName)) {
+
+            }
+        }
     }
 
     @Override
