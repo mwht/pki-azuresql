@@ -1,7 +1,6 @@
 package pl.mwht.websocket;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -23,22 +22,24 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private ChatRecordRepository chatRecordRepository;
 
     private Map<WebSocketSession, String> usersInRoomsBinding = new HashMap<WebSocketSession, String>();
+    private ObjectMapper objectMapper;
+
+    public WebSocketHandler() {
+        this.objectMapper = new ObjectMapper();
+    }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String messagePayload = message.getPayload();
         Logger.getAnonymousLogger().log(Level.INFO, "Received payload: " + messagePayload);
 
-        JSONObject inboundObject = new JSONObject(messagePayload);
         try {
-            String roomId = inboundObject.getString("roomId");
-            String mesg = inboundObject.getString("mesg");
-
-            ChatRecord chatRecord = new ChatRecord(null, roomId, mesg);
+            ChatRecord chatRecord = objectMapper.readValue(messagePayload, ChatRecord.class);
             chatRecordRepository.save(chatRecord);
-        } catch (JSONException jsone) {
-            Logger.getAnonymousLogger().log(Level.SEVERE, jsone.toString());
-            jsone.printStackTrace();
+        } catch (Exception e) {
+            Logger.getAnonymousLogger().log(Level.SEVERE, e.toString());
+            e.printStackTrace();
+            session.close();
         }
     }
 
