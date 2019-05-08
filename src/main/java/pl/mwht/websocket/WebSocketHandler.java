@@ -1,7 +1,6 @@
 package pl.mwht.websocket;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -12,6 +11,7 @@ import pl.mwht.entity.ChatRecord;
 import pl.mwht.repository.ChatRecordRepository;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -23,22 +23,37 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private ChatRecordRepository chatRecordRepository;
 
     private Map<WebSocketSession, String> usersInRoomsBinding = new HashMap<WebSocketSession, String>();
+    private ObjectMapper objectMapper;
+
+    public WebSocketHandler() {
+        this.objectMapper = new ObjectMapper();
+    }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String messagePayload = message.getPayload();
         Logger.getAnonymousLogger().log(Level.INFO, "Received payload: " + messagePayload);
 
-        JSONObject inboundObject = new JSONObject(messagePayload);
         try {
-            String roomId = inboundObject.getString("roomId");
-            String mesg = inboundObject.getString("mesg");
-
-            ChatRecord chatRecord = new ChatRecord(null, roomId, mesg);
-            chatRecordRepository.save(chatRecord);
-        } catch (JSONException jsone) {
-            Logger.getAnonymousLogger().log(Level.SEVERE, jsone.toString());
-            jsone.printStackTrace();
+            ChatRecord chatRecord = objectMapper.readValue(messagePayload, ChatRecord.class);
+            chatRecord.setId(null);
+            switch (chatRecord.getMessageType()) {
+                case CHAT:
+                    chatRecordRepository.save(chatRecord);
+                    break;
+                case JOIN:
+                    List<ChatRecord> messagesInRoom;
+                    usersInRoomsBinding.put(session, chatRecord.getRoomId());
+                    messagesInRoom = chatRecordRepository.findChatRecordsByRoomId(chatRecord.getRoomId());
+                    session.sendMessage(new TextMessage(objectMapper.writeValueAsString(messagesInRoom)));
+                    break;
+                case LEAVE:
+                    break;
+            }
+        } catch (Exception e) {
+            Logger.getAnonymousLogger().log(Level.SEVERE, e.toString());
+            e.printStackTrace();
+            session.close();
         }
     }
 
@@ -50,6 +65,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         Logger.getAnonymousLogger().log(Level.INFO, "WebSocket connection closed (" + session.getRemoteAddress().toString() + ")");
+        if(usersInRoomsBinding.containsKey(session)) {
+            String roomName = usersInRoomsBinding.get(session);
+            usersInRoomsBinding.remove(session);
+            if(!usersInRoomsBinding.containsValue(roomName)) {
+
+            }
+        }
     }
 
     @Override
