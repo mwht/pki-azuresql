@@ -1,5 +1,8 @@
 package pl.mwht.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import javax.persistence.*;
 
 @Entity
@@ -8,6 +11,7 @@ public class ChatRecord {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
+    @JsonIgnore
     private Integer id;
 
     @Column(name = "room_ID", length = 10)
@@ -16,14 +20,23 @@ public class ChatRecord {
     @Column(name = "mesg", length = 100)
     private String mesg;
 
+    protected enum MessageType {
+        CHAT,
+        JOIN,
+        LEAVE
+    };
+
+    private MessageType messageType;
+
     public ChatRecord() {
-        this(null, null, null);
+        this(null, null, null, null);
     }
 
-    public ChatRecord(Integer id, String roomId, String mesg) {
+    public ChatRecord(Integer id, String roomId, String mesg, MessageType messageType) {
         this.id = id;
         this.roomId = roomId;
         this.mesg = mesg;
+        this.messageType = messageType;
     }
 
     public Integer getId() {
@@ -48,5 +61,13 @@ public class ChatRecord {
 
     public void setMesg(String mesg) {
         this.mesg = mesg;
+    }
+
+    public MessageType getMessageType() {
+        return messageType;
+    }
+
+    public void setMessageType(MessageType messageType) {
+        this.messageType = messageType;
     }
 }
